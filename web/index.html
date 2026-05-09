@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Tic-Tac-Toe | Play vs Neural Network</title>
+  <meta name="description" content="Challenge a trained neural network at Tic-Tac-Toe. Can you beat the AI?" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #080b14;
+      --surface: #0f1524;
+      --surface2: #161e35;
+      --border: rgba(99, 130, 255, 0.15);
+      --accent-blue: #4f7fff;
+      --accent-purple: #a855f7;
+      --accent-cyan: #22d3ee;
+      --x-color: #f472b6;
+      --o-color: #34d399;
+      --text: #e2e8f0;
+      --text-muted: #64748b;
+      --glow-blue: rgba(79, 127, 255, 0.35);
+      --glow-purple: rgba(168, 85, 247, 0.35);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+    }
+
+    /* ── Animated background ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 20% 10%, rgba(79,127,255,0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 40% at 80% 90%, rgba(168,85,247,0.12) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .page-wrap {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 520px;
+      padding: 24px 16px 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 28px;
+    }
+
+    /* ── Header ── */
+    header { text-align: center; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent-cyan);
+      background: rgba(34,211,238,0.1);
+      border: 1px solid rgba(34,211,238,0.25);
+      border-radius: 999px;
+      padding: 4px 14px;
+      margin-bottom: 14px;
+    }
+
+    .badge .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      animation: pulse-dot 1.8s ease-in-out infinite;
+    }
+
+    h1 {
+      font-size: clamp(28px, 6vw, 40px);
+      font-weight: 900;
+      line-height: 1.1;
+      background: linear-gradient(135deg, #fff 30%, var(--accent-blue) 70%, var(--accent-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    /* ── Score Bar ── */
+    .scorebar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 24px;
+      gap: 8px;
+    }
+
+    .score-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      flex: 1;
+    }
+
+    .score-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .score-num {
+      font-size: 28px;
+      font-weight: 900;
+    }
+
+    .score-block.you .score-num  { color: var(--o-color); }
+    .score-block.ai  .score-num  { color: var(--x-color); }
+    .score-block.draw .score-num { color: var(--text-muted); }
+
+    .score-divider { color: var(--border); font-size: 24px; }
+
+    /* ── Status Banner ── */
+    .status-banner {
+      width: 100%;
+      text-align: center;
+      padding: 13px 20px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      transition: all 0.4s ease;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .status-banner.your-turn  { border-color: rgba(52,211,153,0.4); color: var(--o-color); background: rgba(52,211,153,0.07); }
+    .status-banner.ai-turn    { border-color: rgba(244,114,182,0.4); color: var(--x-color); background: rgba(244,114,182,0.07); }
+    .status-banner.win        { border-color: rgba(52,211,153,0.6); color: var(--o-color); background: rgba(52,211,153,0.12); }
+    .status-banner.lose       { border-color: rgba(244,114,182,0.6); color: var(--x-color); background: rgba(244,114,182,0.12); }
+    .status-banner.draw-state { border-color: rgba(99,130,255,0.4); color: var(--accent-blue); background: rgba(99,130,255,0.07); }
+
+    /* ── Board ── */
+    .board-wrap {
+      position: relative;
+      width: 100%;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 16px;
+      box-shadow: 0 0 40px rgba(0,0,0,0.5), 0 0 80px var(--glow-blue);
+    }
+
+    .cell {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      cursor: pointer;
+      font-size: clamp(36px, 10vw, 56px);
+      font-weight: 900;
+      transition: background 0.2s, border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+      user-select: none;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cell::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 14px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      background: radial-gradient(circle at center, rgba(255,255,255,0.06), transparent 70%);
+    }
+
+    .cell:hover:not(.taken):not(.disabled)::after { opacity: 1; }
+    .cell:hover:not(.taken):not(.disabled) {
+      border-color: rgba(99,130,255,0.5);
+      transform: scale(1.04);
+      box-shadow: 0 0 18px var(--glow-blue);
+    }
+
+    .cell.taken { cursor: default; }
+    .cell.disabled { cursor: not-allowed; }
+
+    /* Piece symbols */
+    .cell.x-piece { color: var(--x-color); text-shadow: 0 0 20px rgba(244,114,182,0.6); }
+    .cell.o-piece { color: var(--o-color); text-shadow: 0 0 20px rgba(52,211,153,0.6); }
+
+    /* Win highlight */
+    .cell.win-cell {
+      background: rgba(99,130,255,0.12);
+      border-color: rgba(99,130,255,0.6);
+      box-shadow: 0 0 20px var(--glow-blue);
+      animation: win-pulse 1.2s ease-in-out infinite alternate;
+    }
+
+    /* Drop-in animation */
+    @keyframes drop-in {
+      from { transform: scale(0) rotate(-20deg); opacity: 0; }
+      to   { transform: scale(1) rotate(0deg);   opacity: 1; }
+    }
+
+    .cell .piece {
+      display: inline-block;
+      animation: drop-in 0.25s cubic-bezier(0.34,1.56,0.64,1);
+    }
+
+    /* AI thinking overlay */
+    .ai-thinking-overlay {
+      position: absolute;
+      inset: 0;
+      border-radius: 20px;
+      background: rgba(8,11,20,0.5);
+      backdrop-filter: blur(2px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      z-index: 10;
+    }
+
+    .ai-thinking-overlay.visible { opacity: 1; pointer-events: all; }
+
+    .thinking-dots {
+      display: flex;
+      gap: 8px;
+    }
+
+    .thinking-dots span {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--x-color);
+      animation: bounce-dot 1s ease-in-out infinite;
+    }
+
+    .thinking-dots span:nth-child(2) { animation-delay: 0.15s; }
+    .thinking-dots span:nth-child(3) { animation-delay: 0.30s; }
+
+    /* ── Controls ── */
+    .controls {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 14px 20px;
+      border-radius: 12px;
+      border: none;
+      font-family: 'Outfit', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.04em;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      color: #fff;
+      box-shadow: 0 4px 20px var(--glow-blue);
+    }
+
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px var(--glow-blue); }
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-ghost {
+      background: var(--surface);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover { border-color: rgba(99,130,255,0.4); color: var(--text); }
+
+    /* ── Who goes first ── */
+    .first-toggle {
+      display: flex;
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 4px;
+      gap: 4px;
+    }
+
+    .first-btn {
+      flex: 1;
+      padding: 9px;
+      border-radius: 9px;
+      border: none;
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text-muted);
+      background: transparent;
+      transition: all 0.2s;
+    }
+
+    .first-btn.active {
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      color: #fff;
+      box-shadow: 0 2px 12px var(--glow-blue);
+    }
+
+    /* ── Animations ── */
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(0.7); }
+    }
+
+    @keyframes bounce-dot {
+      0%, 80%, 100% { transform: translateY(0); }
+      40%           { transform: translateY(-12px); }
+    }
+
+    @keyframes win-pulse {
+      from { box-shadow: 0 0 10px var(--glow-blue); }
+      to   { box-shadow: 0 0 30px rgba(99,130,255,0.7); }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 400px) {
+      .scorebar { padding: 12px 16px; }
+      .score-num { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- Header -->
+  <header>
+    <div class="badge"><span class="dot"></span> Neural Network Opponent</div>
+    <h1>AI Tic-Tac-Toe</h1>
+    <p class="subtitle">You are <strong style="color:var(--o-color)">O</strong> &nbsp;·&nbsp; AI is <strong style="color:var(--x-color)">X</strong></p>
+  </header>
+
+  <!-- Who goes first -->
+  <div class="first-toggle" id="firstToggle">
+    <button class="first-btn active" id="btnYouFirst" onclick="setFirst('you')">Human Starts</button>
+    <button class="first-btn" id="btnAIFirst" onclick="setFirst('ai')">AI Starts</button>
+  </div>
+
+  <!-- Score bar -->
+  <div class="scorebar">
+    <div class="score-block you">
+      <span class="score-label">You (O)</span>
+      <span class="score-num" id="scoreYou">0</span>
+    </div>
+    <div class="score-divider">vs</div>
+    <div class="score-block draw">
+      <span class="score-label">Draws</span>
+      <span class="score-num" id="scoreDraw">0</span>
+    </div>
+    <div class="score-divider">vs</div>
+    <div class="score-block ai">
+      <span class="score-label">AI (X)</span>
+      <span class="score-num" id="scoreAI">0</span>
+    </div>
+  </div>
+
+  <!-- Status banner -->
+  <div class="status-banner your-turn" id="statusBanner">Your turn — tap a cell!</div>
+
+  <!-- Game Board -->
+  <div class="board-wrap">
+    <div class="board" id="board">
+      <!-- 9 cells generated by JS -->
+    </div>
+    <div class="ai-thinking-overlay" id="thinkingOverlay">
+      <div class="thinking-dots">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="btn btn-ghost" id="btnUndo" onclick="undoMove()">Undo Move</button>
+    <button class="btn btn-primary" onclick="resetGame()">Reset Game</button>
+  </div>
+
+</div>
+
+<script>
+  // ── Config ──
+  const API_BASE = "http://localhost:5050";
+
+  // ── State ──
+  let board = [0,0,0,0,0,0,0,0,0];
+  let gameOver = false;
+  let humanTurn = true;
+  let scores = { you: 0, ai: 0, draw: 0 };
+  let firstPlayer = 'you';        // 'you' | 'ai'
+  let lastHumanMoveIndex = null;  // for undo
+  let preMoveBoard = null;
+
+  // Win lines for highlighting
+  const WIN_LINES = [
+    [0,1,2],[3,4,5],[6,7,8],
+    [0,3,6],[1,4,7],[2,5,8],
+    [0,4,8],[2,4,6]
+  ];
+
+  // ── DOM refs ──
+  const boardEl     = document.getElementById('board');
+  const statusEl    = document.getElementById('statusBanner');
+  const thinkingEl  = document.getElementById('thinkingOverlay');
+  const scoreYouEl  = document.getElementById('scoreYou');
+  const scoreAIEl   = document.getElementById('scoreAI');
+  const scoreDrawEl = document.getElementById('scoreDraw');
+  const btnUndo     = document.getElementById('btnUndo');
+
+  // ── Build board cells ──
+  function buildBoard() {
+    boardEl.innerHTML = '';
+    for (let i = 0; i < 9; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.id = `cell-${i}`;
+      cell.setAttribute('aria-label', `Cell ${i}`);
+      cell.onclick = () => handleHumanClick(i);
+      boardEl.appendChild(cell);
+    }
+  }
+
+  // ── Render board state ──
+  function renderBoard(winCells = []) {
+    for (let i = 0; i < 9; i++) {
+      const cell = document.getElementById(`cell-${i}`);
+      cell.className = 'cell';
+      cell.innerHTML = '';
+
+      if (board[i] === 1) {
+        cell.classList.add('x-piece', 'taken');
+        cell.innerHTML = '<span class="piece">✕</span>';
+      } else if (board[i] === -1) {
+        cell.classList.add('o-piece', 'taken');
+        cell.innerHTML = '<span class="piece">○</span>';
+      } else if (gameOver || !humanTurn) {
+        cell.classList.add('disabled');
+      }
+
+      if (winCells.includes(i)) cell.classList.add('win-cell');
+    }
+    btnUndo.disabled = lastHumanMoveIndex === null || gameOver;
+  }
+
+  // ── Status helpers ──
+  function setStatus(msg, cls) {
+    statusEl.textContent = msg;
+    statusEl.className = 'status-banner ' + cls;
+  }
+
+  // ── Handle human click ──
+  async function handleHumanClick(idx) {
+    if (gameOver || !humanTurn || board[idx] !== 0) return;
+
+    // Save state for undo
+    preMoveBoard = [...board];
+    lastHumanMoveIndex = idx;
+
+    board[idx] = -1;  // Human = O = -1
+    renderBoard();
+
+    // Check if human won
+    const [win, wc] = checkWinner(board);
+    if (win !== null) {
+      handleGameOver(win, wc);
+      return;
+    }
+
+    // AI's turn
+    humanTurn = false;
+    setStatus('AI is thinking…', 'ai-turn');
+    renderBoard();
+    thinkingEl.classList.add('visible');
+
+    await callAI();
+  }
+
+  // ── Call backend AI ──
+  async function callAI() {
+    try {
+      const res = await fetch(`${API_BASE}/ai_move`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ board })
+      });
+
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
+      const data = await res.json();
+
+      board = data.board;
+      thinkingEl.classList.remove('visible');
+
+      const [win, wc] = checkWinner(board);
+      if (win !== null) {
+        renderBoard(wc);
+        handleGameOver(win, wc);
+      } else {
+        humanTurn = true;
+        lastHumanMoveIndex = null; // can't undo after AI moved
+        setStatus('Your turn — tap a cell!', 'your-turn');
+        renderBoard();
+      }
+    } catch (err) {
+      thinkingEl.classList.remove('visible');
+      humanTurn = true;
+      setStatus('Error: Could not reach AI server. Verify server status.', 'ai-turn');
+      console.error(err);
+    }
+  }
+
+  // ── Check winner (client-side mirror) ──
+  function checkWinner(b) {
+    for (const [a, bIdx, c] of WIN_LINES) {
+      if (b[a] !== 0 && b[a] === b[bIdx] && b[bIdx] === b[c]) {
+        return [b[a], [a, bIdx, c]];
+      }
+    }
+    if (!b.includes(0)) return [0.5, []];  // draw
+    return [null, []];
+  }
+
+  // ── Game over handler ──
+  function handleGameOver(winner, winCells) {
+    gameOver = true;
+    lastHumanMoveIndex = null;
+    renderBoard(winCells);
+
+    if (winner === -1) {
+      scores.you++;
+      setStatus('Human victory.', 'win');
+    } else if (winner === 1) {
+      scores.ai++;
+      setStatus('AI victory.', 'lose');
+    } else {
+      scores.draw++;
+      setStatus("The match is a draw.", 'draw-state');
+    }
+
+    updateScoreboard();
+  }
+
+  // ── Scoreboard ──
+  function updateScoreboard() {
+    scoreYouEl.textContent  = scores.you;
+    scoreAIEl.textContent   = scores.ai;
+    scoreDrawEl.textContent = scores.draw;
+  }
+
+  // ── Undo last human move ──
+  function undoMove() {
+    if (!preMoveBoard || gameOver) return;
+    board = [...preMoveBoard];
+    lastHumanMoveIndex = null;
+    preMoveBoard = null;
+    humanTurn = true;
+    renderBoard();
+    setStatus('Your turn — tap a cell!', 'your-turn');
+  }
+
+  // ── Who goes first toggle ──
+  function setFirst(who) {
+    firstPlayer = who;
+    document.getElementById('btnYouFirst').classList.toggle('active', who === 'you');
+    document.getElementById('btnAIFirst').classList.toggle('active', who === 'ai');
+    resetGame();
+  }
+
+  // ── Reset / New Game ──
+  async function resetGame() {
+    board = [0,0,0,0,0,0,0,0,0];
+    gameOver = false;
+    humanTurn = true;
+    lastHumanMoveIndex = null;
+    preMoveBoard = null;
+    thinkingEl.classList.remove('visible');
+    renderBoard();
+
+    if (firstPlayer === 'ai') {
+      humanTurn = false;
+      setStatus('AI goes first — thinking…', 'ai-turn');
+      await callAI();
+    } else {
+      setStatus('Your turn — tap a cell!', 'your-turn');
+    }
+  }
+
+  // ── Init ──
+  buildBoard();
+  resetGame();
+</script>
+</body>
+</html>
