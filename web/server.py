@@ -1,6 +1,6 @@
 import os
 import torch
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 import sys
 
@@ -53,6 +53,10 @@ def ai_move():
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok"})
+
+@app.route("/")
+def index():
+    return send_from_directory(os.path.dirname(__file__), "index.html")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5050, debug=False)
