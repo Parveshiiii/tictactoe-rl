@@ -8,19 +8,22 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from model import TicTacToeModel
 
+# GPU Setup
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"🚀 Running on Device: {device.type.upper()}")
+
 app = Flask(__name__)
 CORS(app)
 
-MODEL_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "checkpoints/tictactoe.pth")
+MODEL_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "model.pth")
 
-# Load model
-model = TicTacToeModel()
+model = TicTacToeModel().to(device)
 if os.path.exists(MODEL_PATH):
-    model.load_state_dict(torch.load(MODEL_PATH, map_location="cpu"))
+    model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
     model.eval()
-    print(f"Model loaded from {MODEL_PATH}")
+    print(f"✅ Model loaded from {MODEL_PATH} on {device}")
 else:
-    print(f"Warning: Model not found at {MODEL_PATH}")
+    print(f"❌ Warning: Model not found at {MODEL_PATH}")
 
 def check_winner(board):
     wins = [(0, 1, 2), (3, 4, 5), (6, 7, 8), (0, 3, 6), (1, 4, 7), (2, 5, 8), (0, 4, 8), (2, 4, 6)]
@@ -40,9 +43,9 @@ def ai_move():
         return jsonify({"move": None, "board": board, "winner": check_winner(board)})
 
     with torch.no_grad():
-        state = torch.tensor(board, dtype=torch.float32)
+        state = torch.tensor(board, dtype=torch.float32).to(device)
         logits = model(state)
-        mask = torch.tensor([board[i] != 0 for i in range(9)])
+        mask = torch.tensor([board[i] != 0 for i in range(9)], device=device)
         logits[mask] = float("-inf")
         action = torch.argmax(logits).item()
 

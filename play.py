@@ -1,6 +1,9 @@
 import torch
 from model import TicTacToeModel
 
+# GPU Setup
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 def check_winner(board):
     wins = [(0, 1, 2), (3, 4, 5), (6, 7, 8), (0, 3, 6), (1, 4, 7), (2, 5, 8), (0, 4, 8), (2, 4, 6)]
     for a, b, c in wins:
@@ -16,11 +19,13 @@ def print_board(b):
     print()
 
 def play():
-    model = TicTacToeModel()
+    model = TicTacToeModel().to(device)
+    checkpoint = "checkpoints/tictactoe_l4_extreme_scratch.pth"
     try:
-        model.load_state_dict(torch.load("checkpoints/tictactoe.pth"))
+        model.load_state_dict(torch.load(checkpoint, map_location=device))
+        print(f"✅ Loaded checkpoint from {checkpoint} on {device}")
     except:
-        print("Warning: No checkpoint found in 'checkpoints/tictactoe.pth'. Using untrained model.")
+        print(f"⚠️ Warning: No checkpoint found in '{checkpoint}'. Using untrained model.")
     
     model.eval()
     board = [0] * 9
@@ -40,9 +45,9 @@ def play():
         # AI Move
         print("AI is thinking...")
         with torch.no_grad():
-            state = torch.tensor(board, dtype=torch.float32)
+            state = torch.tensor(board, dtype=torch.float32).to(device)
             logits = model(state)
-            mask = torch.tensor([board[i] != 0 for i in range(9)])
+            mask = torch.tensor([board[i] != 0 for i in range(9)], device=device)
             logits[mask] = float("-inf")
             action = torch.argmax(logits).item()
             board[action] = 1
